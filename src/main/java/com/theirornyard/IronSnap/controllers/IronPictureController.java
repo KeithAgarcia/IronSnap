@@ -1,5 +1,7 @@
 package com.theirornyard.IronSnap.controllers;
 
+
+import com.theirornyard.IronSnap.entities.DeleteRunnable;
 import com.theirornyard.IronSnap.entities.IronPicture;
 import com.theirornyard.IronSnap.services.IronSnapFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,21 +25,28 @@ public class IronPictureController {
     IronSnapFileRepository pictures;
 
     @RequestMapping(path = "/upload", method = RequestMethod.POST)
-    public void upload(MultipartFile file, HttpServletResponse response) throws IOException {
+    public void upload(MultipartFile file, int expirationTime, HttpServletResponse response) throws IOException {
         File dir = new File("public/files");
         dir.mkdirs();
         File f = File.createTempFile("file", file.getOriginalFilename(), dir);
         FileOutputStream fos = new FileOutputStream(f);
         fos.write(file.getBytes());
 
-        IronPicture anonFile = new IronPicture(f.getName(), file.getOriginalFilename());
-        pictures.save(anonFile);
+        IronPicture ironPicture = new IronPicture(f.getName(), file.getOriginalFilename(), expirationTime);
+        pictures.save(ironPicture);
 
         response.sendRedirect("/");
     }
     @RequestMapping(path = "/files", method = RequestMethod.GET)
-    public List<IronPicture> getFiles() {
-        return (List<IronPicture>) pictures.findAll();
+    public List<IronPicture> getPictures() throws InterruptedException {
+        List<IronPicture> ironPictures = (List)pictures.findAll();
+        for(IronPicture picture : ironPictures){
+            Thread t = new Thread(new DeleteRunnable(pictures, picture) );
+
+            t.start();
+        }
+
+        return ironPictures;
     }
 
 
